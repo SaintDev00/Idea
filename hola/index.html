@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Juego de Territorios Medellín</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Delaunay -->
+<script src="https://unpkg.com/delaunator@5.0.0/delaunator.min.js"></script>
+
+<style>
+
+body{
+margin:0;
+background:#111;
+font-family:Arial;
+}
+
+#map{
+height:100vh;
+width:100vw;
+}
+
+#leaderUI{
+
+position:absolute;
+top:10px;
+left:10px;
+
+background:rgba(0,0,0,0.7);
+
+padding:15px;
+border-radius:10px;
+
+color:white;
+z-index:1000;
+
+}
+
+.flag{
+font-size:30px;
+}
+
+</style>
+
+</head>
+<body>
+
+<div id="leaderUI">
+Líder:<br>
+<span id="leaderFlag" class="flag">⚪</span>
+</div>
+
+<div id="map"></div>
+
+<script>
+
+// CONFIG
+const TRIANGLE_DENSITY = 190;
+
+
+// CREAR MAPA
+const map = L.map('map',{
+
+zoomControl:true,
+
+minZoom:12,
+
+maxZoom:20
+
+}).setView([6.2518, -75.5636], 13);
+
+
+// OpenStreetMap GRATIS
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+
+maxZoom:20,
+
+}).addTo(map);
+
+
+let territories=[];
+let triangles=[];
+
+
+// GENERAR PUNTOS
+function generatePoints(){
+
+let pts=[];
+
+let bounds={
+
+minLng:-75.60,
+maxLng:-75.52,
+
+minLat:6.22,
+maxLat:6.30
+
+};
+
+for(let i=0;i<TRIANGLE_DENSITY*TRIANGLE_DENSITY;i++){
+
+let lng=bounds.minLng+Math.random()*(bounds.maxLng-bounds.minLng);
+
+let lat=bounds.minLat+Math.random()*(bounds.maxLat-bounds.minLat);
+
+pts.push([lat,lng]);
+
+}
+
+return pts;
+
+}
+
+
+// CREAR TRIANGULOS
+function generateTriangles(){
+
+let pts=generatePoints();
+
+let flat=[];
+
+pts.forEach(p=>{
+flat.push(p[1],p[0]);
+});
+
+let delaunay=new Delaunator(flat);
+
+let tri=delaunay.triangles;
+
+let owners=["blue","red","gray"];
+
+for(let i=0;i<tri.length;i+=3){
+
+let p1=pts[tri[i]];
+let p2=pts[tri[i+1]];
+let p3=pts[tri[i+2]];
+
+let owner=owners[Math.floor(Math.random()*3)];
+
+let polygon=L.polygon([p1,p2,p3],{
+
+color:"black",
+
+weight:0.5,
+
+fillOpacity:0.6,
+
+fillColor:getColor(owner)
+
+}).addTo(map);
+
+polygon.owner=owner;
+
+polygon.on('click',()=>{
+
+polygon.owner=randomOwner();
+
+polygon.setStyle({
+
+fillColor:getColor(polygon.owner)
+
+});
+
+updateLeader();
+
+});
+
+triangles.push(polygon);
+
+}
+
+}
+
+
+// COLOR
+function getColor(owner){
+
+if(owner=="blue") return "rgba(44,88,160,0.6)";
+
+if(owner=="red") return "rgba(160,44,44,0.6)";
+
+return "rgba(120,120,120,0.6)";
+
+}
+
+
+// RANDOM OWNER
+function randomOwner(){
+
+let owners=["blue","red","gray"];
+
+return owners[Math.floor(Math.random()*3)];
+
+}
+
+
+// LEADER
+function updateLeader(){
+
+let count={blue:0,red:0,gray:0};
+
+triangles.forEach(t=>{
+count[t.owner]++;
+});
+
+let leader="gray";
+
+if(count.blue>count.red && count.blue>count.gray)
+leader="blue";
+
+else if(count.red>count.blue && count.red>count.gray)
+leader="red";
+
+
+let flag="⚪";
+
+if(leader=="blue") flag="🔵";
+if(leader=="red") flag="🔴";
+
+document.getElementById("leaderFlag").innerHTML=flag;
+
+}
+
+
+// GENERAR
+generateTriangles();
+
+updateLeader();
+
+</script>
+
+</body>
+</html>
